@@ -1,17 +1,18 @@
 """
 main.py
 
-FastAPI backend for AI BI Genie with:
-- Per-session chat memory
-- SQL explainability
-- Enhanced chart types (grouped_bar, scatter)
+FastAPI backend for AI BI Genie.
+Serves both API endpoints AND the React frontend static files.
 """
 
+import os
 import uuid
 from typing import Optional
 
 from fastapi import FastAPI, Header
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
 from pydantic import BaseModel
 
 from sql_agent import generate_sql
@@ -40,11 +41,9 @@ class UserQuery(BaseModel):
     session_id: Optional[str] = None
 
 
-@app.get("/")
-def home():
-    return {
-        "message": "AI BI Genie Running (Memory + Explainability + Advanced Charts)"
-    }
+@app.get("/api/health")
+def health():
+    return {"status": "healthy", "service": "AI BI Genie"}
 
 
 @app.post("/chat")
@@ -52,34 +51,16 @@ def chat(
     user_query: UserQuery,
     x_session_id: Optional[str] = Header(None),
 ):
-    """
-    Main chat endpoint with:
-    - Memory-aware SQL generation
-    - SQL explainability (clause-by-clause)
-    - Advanced chart types (grouped_bar, scatter)
-    """
-
     session_id = user_query.session_id or x_session_id or str(uuid.uuid4())
     question = user_query.question
 
     try:
-
-        # 1. Generate SQL (memory-aware)
         sql = generate_sql(question, session_id)
-
-        # 2. Execute query
         results = execute_query(sql)
-
-        # 3. Analyze results (memory-aware)
         analytics = analyze_results(question, results, session_id)
-
-        # 4. Generate chart recommendation (memory-aware, now with grouped_bar + scatter)
         chart = generate_chart(question, results, session_id)
-
-        # 5. Generate SQL explanation (clause-by-clause)
         sql_explanation = explain_sql(sql, question)
 
-        # 6. Build result summary for memory
         result_summary = ""
         if results:
             cols = list(results[0].keys())
@@ -88,7 +69,6 @@ def chat(
                 f"First row: {results[0]}"
             )
 
-        # 7. Persist turn in memory
         memory_manager.add_turn(
             session_id=session_id,
             question=question,
@@ -110,7 +90,6 @@ def chat(
         }
 
     except Exception as e:
-
         return {
             "session_id": session_id,
             "error": str(e),
@@ -132,3 +111,17 @@ def clear_history(session_id: str):
         "session_id": session_id,
         "message": "Conversation memory cleared.",
     }
+
+
+# ─── Serve React Frontend ───
+STATIC_DIR = os.path.join(os.path.dirname(__file__), "static")
+
+if os.path.exists(STATIC_DIR):
+    app.mount("/static", StaticFiles(directory=os.path.join(STATIC_DIR, "static")), name="static-assets")
+
+    @app.get("/{full_path:path}")
+    async def serve_react(full_path: str):
+        file_path = os.path.join(STATIC_DIR, full_path)
+        if os.path.isfile(file_path):
+            return FileResponse(file_path)
+        return FileResponse(os.path.join(STATIC_DIR, "index.html"))

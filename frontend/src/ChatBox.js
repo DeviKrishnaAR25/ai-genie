@@ -80,7 +80,7 @@ function ChatBox() {
     setLoading(true);
 
     try {
-      const response = await axios.post("http://127.0.0.1:8000/chat", {
+      const response = await axios.post("/chat", {
         question: userQuestion,
         session_id: sessionId
       });
@@ -102,7 +102,7 @@ function ChatBox() {
   }
 
   function startNewConversation() {
-    axios.delete(`http://127.0.0.1:8000/history/${sessionId}`).catch(() => {});
+    axios.delete(`/history/${sessionId}`).catch(() => {});
     const newId = crypto.randomUUID();
     sessionStorage.setItem("genie_session_id", newId);
     setSessionId(newId);

@@ -1,6 +1,7 @@
+import os
 from google.cloud import bigquery
 
-PROJECT_ID = "sada-seed-2025-sandbox"
+PROJECT_ID = os.environ.get("PROJECT_ID", "sada-seed-2025-sandbox")
 
 client = bigquery.Client(
     project=PROJECT_ID
